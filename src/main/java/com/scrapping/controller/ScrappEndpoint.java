@@ -14,13 +14,15 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
 
+import static java.lang.Thread.sleep;
+
 @RestController
 @RequestMapping
-public class ScrappController {
+public class ScrappEndpoint {
 
     private final ScrappedRepository scrappedRepository;
 
-    public ScrappController(ScrappedRepository scrappedRepository) {
+    public ScrappEndpoint(ScrappedRepository scrappedRepository) {
         this.scrappedRepository = scrappedRepository;
     }
 
@@ -29,32 +31,39 @@ public class ScrappController {
     public ResponseEntity scrapp() throws IOException {
 
         try {
-            Document document = Jsoup.connect("https://www.list.am/category/23").timeout(6000).get();
+            Document document = Jsoup.connect("https://www.list.am/category/23").timeout(100000).get();
+            Elements select = document.select("div#contentr");
+            Element first = select.first();
+            Elements link = first.getElementsByTag("a");
 
-            Elements elements = document.select("div.gl");
-//            String[] titles = new String[1];
-            for (Element element : elements) {
-                Elements a1 = element.getElementsByTag("a");
-                for (Element element1 : a1) {
-                    String modelInfo = element1.select("div.l").text();
-                    String modelPrice = element1.select("div.p").text();
-                    String picture = element1.tagName("img").attr("href").substring(2);
-                    System.out.println(modelInfo);
-                    System.out.println(modelPrice);
-                    System.out.println(picture);
-                    System.out.println();
+            for (Element linkElement : link) {
+                String modelInfo = linkElement.select("div.l").text();
+                String modelPrice = linkElement.select("div.p").text();
+                Element imageElement = linkElement.select("img").first();
 
+                if (imageElement != null) {
+                    String absoluteUrl = imageElement.absUrl("src");
+
+                    if (absoluteUrl == null || absoluteUrl.equals("")) {
+                        absoluteUrl = imageElement.absUrl("data-original");
+                    }
+
+                    System.out.println(modelInfo + " : " + absoluteUrl + " : " + modelPrice);
                     Scrapped scrapped = Scrapped.builder()
                             .modelInfo(modelInfo)
                             .modelPrice(modelPrice)
-                            .picture(picture)
+                            .picture(absoluteUrl)
                             .build();
                     scrappedRepository.save(scrapped);
+                    sleep(500);
                 }
+
             }
 
         } catch (IOException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
         return ResponseEntity.status(HttpStatus.OK).build();
     }
