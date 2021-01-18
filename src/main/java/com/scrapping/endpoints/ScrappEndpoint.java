@@ -1,7 +1,8 @@
-package com.scrapping.controller;
+package com.scrapping.endpoints;
 
 import com.scrapping.model.Scrapped;
 import com.scrapping.repository.ScrappedRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -18,6 +19,7 @@ import static java.lang.Thread.sleep;
 
 @RestController
 @RequestMapping
+@Slf4j
 public class ScrappEndpoint {
 
     private final ScrappedRepository scrappedRepository;
@@ -26,12 +28,12 @@ public class ScrappEndpoint {
         this.scrappedRepository = scrappedRepository;
     }
 
-
     @GetMapping
     public ResponseEntity scrapp() throws IOException {
 
         try {
             Document document = Jsoup.connect("https://www.list.am/category/23").timeout(100000).get();
+            log.info("Jsoup connects to the URL");
             Elements select = document.select("div#contentr");
             Element first = select.first();
             Elements link = first.getElementsByTag("a");
@@ -48,14 +50,14 @@ public class ScrappEndpoint {
                         absoluteUrl = imageElement.absUrl("data-original");
                     }
 
-                    System.out.println(modelInfo + " : " + absoluteUrl + " : " + modelPrice);
+                    log.info(modelInfo + " : " + absoluteUrl + " : " + modelPrice);
                     Scrapped scrapped = Scrapped.builder()
                             .modelInfo(modelInfo)
                             .modelPrice(modelPrice)
                             .picture(absoluteUrl)
                             .build();
                     scrappedRepository.save(scrapped);
-                    sleep(500);
+                    sleep(200);
                 }
 
             }
